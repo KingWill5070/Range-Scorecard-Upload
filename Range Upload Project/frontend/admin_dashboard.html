@@ -1,0 +1,238 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Admin Dashboard</title>
+    <style>
+      body {
+        font-family: Arial;
+        margin: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        width: 1100px;
+        margin: auto;
+        padding: 25px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      h2 {
+        margin-bottom: 20px;
+      }
+      h3 {
+        margin-top: 30px;
+      }
+      table {
+        width: 100%;
+        margin-top: 15px;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+      }
+      th {
+        background: #ddd;
+      }
+      select {
+        padding: 6px;
+      }
+      button {
+        padding: 6px 10px;
+        margin-left: 5px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      .metrics-box {
+        background: #eef;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 25px;
+      }
+      .message {
+        margin-top: 15px;
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>Admin Dashboard</h2>
+
+      <div class="metrics-box">
+        <h3>System Metrics</h3>
+        <p id="metrics"></p>
+      </div>
+
+      <h3>All Users</h3>
+      <table id="usersTable">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h3>Hierarchy Overview</h3>
+      <div id="hierarchy"></div>
+    </div>
+
+    <script>
+      const API = "http://127.0.0.1:8000";
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "index.html";
+      }
+
+      // -------------------------
+      // Load Metrics
+      // -------------------------
+      async function loadMetrics() {
+        const res = await fetch(`${API}/admin/metrics`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+
+        document.getElementById("metrics").innerHTML = `
+          <strong>Total Users:</strong> ${data.total_users}<br>
+          <strong>Total Soldiers:</strong> ${data.total_soldiers}<br>
+          <strong>Total NCOs:</strong> ${data.total_ncos}<br>
+          <strong>Total Officers:</strong> ${data.total_officers}<br>
+          <strong>Total Uploads:</strong> ${data.total_uploads}
+        `;
+      }
+
+      // -------------------------
+      // Load Users
+      // -------------------------
+      async function loadUsers() {
+        const res = await fetch(`${API}/admin/users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const users = await res.json();
+        const tbody = document.querySelector("#usersTable tbody");
+        tbody.innerHTML = "";
+
+        users.forEach((user) => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.role}</td>
+            <td>
+              <select id="role-${user.user_id}">
+                <option value="soldier">Soldier</option>
+                <option value="nco">NCO</option>
+                <option value="officer">Officer</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button onclick="updateRole('${user.user_id}')">Update</button>
+              <button onclick="deleteUser('${user.user_id}')">Delete</button>
+            </td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      // -------------------------
+      // Update Role
+      // -------------------------
+      async function updateRole(user_id) {
+        const newRole = document.getElementById(`role-${user_id}`).value;
+
+        const formData = new FormData();
+        formData.append("user_id", user_id);
+        formData.append("new_role", newRole);
+
+        const res = await fetch(`${API}/admin/update-role`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Role update failed.");
+          return;
+        }
+
+        loadUsers();
+        loadHierarchy();
+        loadMetrics();
+      }
+
+      // -------------------------
+      // Delete User
+      // -------------------------
+      async function deleteUser(user_id) {
+        const res = await fetch(`${API}/admin/delete-user?user_id=${user_id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Delete failed.");
+          return;
+        }
+
+        loadUsers();
+        loadHierarchy();
+        loadMetrics();
+      }
+
+      // -------------------------
+      // Load Hierarchy
+      // -------------------------
+      async function loadHierarchy() {
+        const res = await fetch(`${API}/admin/hierarchy`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        const container = document.getElementById("hierarchy");
+        container.innerHTML = "";
+
+        data.officers.forEach((officer) => {
+          const block = document.createElement("div");
+          block.style.marginBottom = "20px";
+
+          let html = `<h4>Officer: ${officer.username}</h4><ul>`;
+
+          officer.ncos.forEach((nco) => {
+            html += `<li><strong>NCO:</strong> ${nco.username}<ul>`;
+            nco.soldiers.forEach((soldier) => {
+              html += `<li>Soldier: ${soldier.username}</li>`;
+            });
+            html += `</ul></li>`;
+          });
+
+          html += `</ul>`;
+          block.innerHTML = html;
+          container.appendChild(block);
+        });
+      }
+
+      // -------------------------
+      // INITIAL LOAD
+      // -------------------------
+      loadMetrics();
+      loadUsers();
+      loadHierarchy();
+    </script>
+  </body>
+</html>

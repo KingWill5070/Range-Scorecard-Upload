@@ -1,0 +1,128 @@
+<!-- ============================================================
+SECTION 1 — REGISTRATION PAGE STRUCTURE + STYLING
+============================================================ -->
+
+<!doctype html>
+<html>
+  <head>
+    <title>Create Account</title>
+    <style>
+      body {
+        font-family: Arial;
+        margin: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        width: 350px;
+        margin: auto;
+        padding: 25px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        margin-top: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 18px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      .message {
+        margin-top: 15px;
+        color: red;
+        font-weight: bold;
+      }
+      .link {
+        margin-top: 15px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Create Account</h2>
+
+      <input id="username" placeholder="Username" />
+      <input id="password" type="password" placeholder="Password" />
+
+      <select id="role">
+        <option value="soldier">Soldier</option>
+        <option value="nco">NCO</option>
+        <option value="officer">Officer</option>
+        <option value="admin">Admin</option>
+      </select>
+
+      <input id="supervisor" placeholder="Supervisor ID (optional)" />
+
+      <button onclick="register()">Create Account</button>
+
+      <p id="msg" class="message"></p>
+
+      <div class="link">
+        <a href="index.html">Back to Login</a>
+      </div>
+    </div>
+    <!-- ============================================================
+SECTION 2 — REGISTRATION LOGIC
+============================================================ -->
+
+    <script>
+      const API = "http://127.0.0.1:8000";
+
+      async function register() {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const role = document.getElementById("role").value;
+        const supervisor_id =
+          document.getElementById("supervisor").value.trim() || null;
+
+        if (!username || !password) {
+          document.getElementById("msg").innerText =
+            "Username and password required.";
+          return;
+        }
+
+        const payload = {
+          username,
+          password,
+          role,
+          supervisor_id,
+        };
+
+        const res = await fetch(`${API}/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById("msg").innerText =
+            data.detail || "Registration failed.";
+          return;
+        }
+
+        // Success
+        document.getElementById("msg").style.color = "green";
+        document.getElementById("msg").innerText =
+          "Account created successfully! Redirecting...";
+
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1500);
+      }
+    </script>
+  </body>
+</html>

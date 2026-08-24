@@ -1,0 +1,124 @@
+<!-- ============================================================
+SECTION 1 — INDEX LOGIN PAGE STRUCTURE + STYLING
+============================================================ -->
+
+<!doctype html>
+<html>
+  <head>
+    <title>Login</title>
+    <style>
+      body {
+        font-family: Arial;
+        margin: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        width: 350px;
+        margin: auto;
+        padding: 25px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-top: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 18px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      .link {
+        margin-top: 15px;
+        text-align: center;
+      }
+      .message {
+        margin-top: 15px;
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Login</h2>
+
+      <input id="username" placeholder="Username" />
+      <input id="password" type="password" placeholder="Password" />
+
+      <button onclick="login()">Login</button>
+
+      <p id="msg" class="message"></p>
+
+      <div class="link">
+        <a href="register.html">Create Account</a>
+      </div>
+    </div>
+    <!-- ============================================================
+SECTION 2 — LOGIN LOGIC
+============================================================ -->
+
+    <script>
+      const API = "http://127.0.0.1:8000";
+
+      async function login() {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        if (!username || !password) {
+          document.getElementById("msg").innerText =
+            "Please enter username and password.";
+          return;
+        }
+
+        // OAuth2PasswordRequestForm requires x-www-form-urlencoded
+        const formData = new URLSearchParams();
+        formData.append("username", username);
+        formData.append("password", password);
+
+        const res = await fetch(`${API}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById("msg").innerText =
+            data.detail || "Login failed.";
+          return;
+        }
+
+        // Save token + role + user_id
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("user_id", data.user_id);
+
+        // Redirect based on role
+        if (data.role === "soldier") {
+          window.location.href = "soldier_dashboard.html";
+        } else if (data.role === "nco") {
+          window.location.href = "nco_dashboard.html";
+        } else if (data.role === "officer") {
+          window.location.href = "officer_dashboard.html";
+        } else if (data.role === "admin") {
+          window.location.href = "admin_dashboard.html";
+        } else {
+          document.getElementById("msg").innerText = "Unknown role.";
+        }
+      }
+    </script>
+  </body>
+</html>
+</body>
+</html>
