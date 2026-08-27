@@ -642,6 +642,13 @@ def get_officer_uploads(current_user: User = Depends(get_current_user), db: Sess
     ]
 
 
+# ============================================================
+# SECTION 7.5 — FRONTEND HOMEPAGE ROUTE
+# ============================================================
+
+@app.get("/")
+def serve_homepage():
+    return FileResponse("frontend/index.html")
 
 
 
@@ -649,6 +656,11 @@ def get_officer_uploads(current_user: User = Depends(get_current_user), db: Sess
 # SECTION 8 — STATIC FILE MOUNTS
 # ============================================================
 
-app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
+# Serve frontend assets (CSS, JS, images)
+app.mount("/assets", StaticFiles(directory="frontend/assets"), name="assets")
+
+# Serve static files (if you have any)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve uploaded files
 app.mount("/files", StaticFiles(directory="uploads"), name="files")
