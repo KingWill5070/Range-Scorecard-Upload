@@ -656,10 +656,13 @@ def serve_homepage():
 # SECTION 8 — STATIC FILE MOUNTS
 # ============================================================
 
-# Serve frontend assets (CSS, JS, images)
-app.mount("/assets", StaticFiles(directory="frontend/assets"), name="assets")
+# Serve the frontend folder itself
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
-# Serve static files (if you have any)
+# Serve the assets folder (images, css, js)
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+
+# Serve static folder
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Serve uploaded files
