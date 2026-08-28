@@ -1,0 +1,186 @@
+<!-- ============================================================
+SECTION 1 — SOLDIER DASHBOARD STRUCTURE + STYLING
+============================================================ -->
+
+<!doctype html>
+<html>
+  <head>
+    <title>Soldier Dashboard</title>
+    <style>
+      body {
+        font-family: Arial;
+        margin: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        width: 700px;
+        margin: auto;
+        padding: 25px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      h2 {
+        margin-bottom: 20px;
+      }
+      .upload-section {
+        margin-bottom: 30px;
+        padding: 15px;
+        background: #eef;
+        border-radius: 6px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px;
+        margin-top: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        padding: 10px 15px;
+        margin-top: 15px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      table {
+        width: 100%;
+        margin-top: 25px;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+      }
+      th {
+        background: #ddd;
+      }
+      .message {
+        margin-top: 15px;
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>Soldier Dashboard</h2>
+
+      <div class="upload-section">
+        <h3>Upload Range Card</h3>
+
+        <input type="file" id="fileInput" />
+
+        <!-- ⭐ NEW: Clearer prompt for score -->
+        <textarea
+          id="description"
+          placeholder="Enter your score (e.g., 'Score: 32')"
+        ></textarea>
+
+        <button onclick="upload()">Upload</button>
+
+        <p id="uploadMsg" class="message"></p>
+      </div>
+
+      <h3>Your Uploads</h3>
+      <table id="uploadsTable">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Legacy Term</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- ============================================================
+SECTION 2 — SOLDIER DASHBOARD LOGIC
+============================================================ -->
+
+    <script>
+      // Correct API URL for Render deployment
+      const API = "https://range-scorecard-upload.onrender.com";
+
+      // Redirect if not logged in
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/frontend/index.html";
+      }
+
+      // -------------------------
+      // Load Soldier Uploads
+      // -------------------------
+      async function loadUploads() {
+        const res = await fetch(`${API}/soldier/uploads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+
+        const tbody = document.querySelector("#uploadsTable tbody");
+        tbody.innerHTML = "";
+
+        data.forEach((upload) => {
+          const row = document.createElement("tr");
+
+          // ⭐ NEW: Clickable filename link (corrected for Render)
+          row.innerHTML = `
+            <td><a href="${API}/files/${upload.filename}" target="_blank">${upload.filename}</a></td>
+            <td>${upload.description}</td>
+            <td>${upload.status}</td>
+            <td>${upload.legacy_term}</td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      // -------------------------
+      // Upload New Range Card
+      // -------------------------
+      async function upload() {
+        const file = document.getElementById("fileInput").files[0];
+        const description = document.getElementById("description").value.trim();
+
+        if (!file || !description) {
+          document.getElementById("uploadMsg").innerText =
+            "File and description required.";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("description", description);
+
+        const res = await fetch(`${API}/soldier/uploads`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById("uploadMsg").innerText =
+            data.detail || "Upload failed.";
+          return;
+        }
+
+        document.getElementById("uploadMsg").style.color = "green";
+        document.getElementById("uploadMsg").innerText = "Upload successful.";
+
+        loadUploads();
+      }
+
+      // Load uploads on page load
+      loadUploads();
+    </script>
+  </body>
+</html>

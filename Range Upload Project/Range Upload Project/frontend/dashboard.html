@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Soldier Dashboard</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        padding: 30px;
+      }
+
+      h2 {
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      .upload-card {
+        background: white;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .upload-card p {
+        margin: 6px 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Soldier Dashboard</h2>
+
+    <div id="uploadList"></div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+      const soldierId = "SOLDIER-12345"; // later dynamic
+
+      async function loadUploads() {
+        const response = await fetch(
+          `http://127.0.0.1:8000/soldier/${soldierId}/uploads`,
+        );
+        const uploads = await response.json();
+
+        const list = document.getElementById("uploadList");
+        list.innerHTML = "";
+
+        uploads.forEach((upload) => {
+          const card = document.createElement("div");
+          card.className = "upload-card";
+
+          card.innerHTML = `
+            <p><strong>File:</strong> ${upload.filename}</p>
+            <p><strong>Uploaded:</strong> ${upload.uploaded_at}</p>
+            <p><strong>ID:</strong> ${upload.file_id}</p>
+          `;
+
+          list.appendChild(card);
+        });
+      }
+
+      loadUploads();
+    </script>
+  </body>
+</html>

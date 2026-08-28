@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+  <head>
+    <title>NCO Dashboard</title>
+    <style>
+      body {
+        font-family: Arial;
+        margin: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        width: 900px;
+        margin: auto;
+        padding: 25px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      h2 {
+        margin-bottom: 20px;
+      }
+      h3 {
+        margin-top: 30px;
+      }
+      table {
+        width: 100%;
+        margin-top: 15px;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+      }
+      th {
+        background: #ddd;
+      }
+      button {
+        padding: 6px 10px;
+        margin-left: 5px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      select,
+      input {
+        padding: 8px;
+        margin-top: 10px;
+        width: 250px;
+      }
+      .message {
+        margin-top: 15px;
+        color: red;
+        font-weight: bold;
+      }
+
+      /* ⭐ Readiness Bar */
+      .readiness-container {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      .readiness-bar {
+        width: 300px;
+        height: 25px;
+        background: #ccc;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .readiness-fill {
+        height: 100%;
+        width: 0%;
+        background: red;
+        border-radius: 5px;
+        transition: width 0.5s ease;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>NCO Dashboard</h2>
+
+      <!-- ⭐ READINESS SUMMARY -->
+      <h3>Platoon Readiness</h3>
+      <div id="readinessSummary"></div>
+
+      <div class="readiness-container">
+        <div class="readiness-bar">
+          <div id="readinessFill" class="readiness-fill"></div>
+        </div>
+      </div>
+
+      <!-- ASSIGN SOLDIERS -->
+      <h3>Assign Unassigned Soldiers</h3>
+      <select id="unassignedSelect"></select>
+      <button onclick="assignSoldier()">Assign Soldier</button>
+      <p id="assignMsg" class="message"></p>
+
+      <!-- SOLDIER READINESS -->
+      <h3>Your Soldiers</h3>
+      <table id="soldiersTable">
+        <thead>
+          <tr>
+            <th>Soldier</th>
+            <th>Completed Uploads</th>
+            <th>Pending Items</th>
+            <th>Readiness %</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- UPLOADS -->
+      <h3>Uploads From Your Soldiers</h3>
+      <table id="uploadsTable">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Legacy Term</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script>
+      // Correct API URL for Render deployment
+      const API = "https://range-scorecard-upload.onrender.com";
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/frontend/index.html";
+      }
+
+      // -------------------------
+      // Load Readiness Summary + Bar
+      // -------------------------
+      async function loadReadiness() {
+        const res = await fetch(`${API}/nco/readiness`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+
+        document.getElementById("readinessSummary").innerHTML = `
+          <p><strong>Total Soldiers:</strong> ${data.total_soldiers}</p>
+          <p><strong>Total Uploads:</strong> ${data.total_uploads}</p>
+          <p><strong>Approved:</strong> ${data.approved}</p>
+          <p><strong>Pending:</strong> ${data.pending}</p>
+          <p><strong>Rejected:</strong> ${data.rejected}</p>
+          <p><strong>Readiness:</strong> ${data.readiness_percentage}%</p>
+        `;
+
+        const fill = document.getElementById("readinessFill");
+        fill.style.width = data.readiness_percentage + "%";
+
+        let color = "red";
+        if (data.readiness_percentage >= 75) color = "green";
+        else if (data.readiness_percentage >= 40) color = "goldenrod";
+
+        fill.style.background = color;
+      }
+
+      // -------------------------
+      // Load Unassigned Soldiers
+      // -------------------------
+      async function loadUnassigned() {
+        const res = await fetch(`${API}/nco/unassigned-soldiers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        const select = document.getElementById("unassignedSelect");
+
+        select.innerHTML = "";
+        data.forEach((soldier) => {
+          const option = document.createElement("option");
+          option.value = soldier.user_id;
+          option.textContent = soldier.username;
+          select.appendChild(option);
+        });
+      }
+
+      // -------------------------
+      // Assign Soldier
+      // -------------------------
+      async function assignSoldier() {
+        const soldier_id = document.getElementById("unassignedSelect").value;
+
+        const formData = new FormData();
+        formData.append("soldier_id", soldier_id);
+
+        const res = await fetch(`${API}/nco/assign-soldier`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById("assignMsg").innerText =
+            data.detail || "Assignment failed.";
+          return;
+        }
+
+        document.getElementById("assignMsg").style.color = "green";
+        document.getElementById("assignMsg").innerText =
+          "Soldier assigned successfully.";
+
+        loadUnassigned();
+        loadSoldiers();
+        loadUploads();
+        loadReadiness();
+      }
+
+      // -------------------------
+      // Load Soldiers Assigned to NCO
+      // -------------------------
+      async function loadSoldiers() {
+        const res = await fetch(`${API}/nco/soldiers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        const tbody = document.querySelector("#soldiersTable tbody");
+        tbody.innerHTML = "";
+
+        data.forEach((soldier) => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${soldier.username}</td>
+            <td>${soldier.completed_uploads}</td>
+            <td>${soldier.pending_items}</td>
+            <td>${soldier.readiness_percentage}%</td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      // -------------------------
+      // Load Uploads From Soldiers
+      // -------------------------
+      async function loadUploads() {
+        const res = await fetch(`${API}/nco/uploads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        const tbody = document.querySelector("#uploadsTable tbody");
+        tbody.innerHTML = "";
+
+        data.forEach((upload) => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td><a href="${API}/files/${upload.filename}" target="_blank">${upload.filename}</a></td>
+            <td>${upload.description}</td>
+            <td>${upload.status}</td>
+            <td>${upload.legacy_term}</td>
+            <td>
+              <button onclick="updateStatus('${upload.file_id}', 'approved')">Approve</button>
+              <button onclick="updateStatus('${upload.file_id}', 'rejected')">Reject</button>
+            </td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      // -------------------------
+      // Approve / Reject Upload
+      // -------------------------
+      async function updateStatus(file_id, status) {
+        const formData = new FormData();
+        formData.append("file_id", file_id);
+        formData.append("status", status);
+
+        const res = await fetch(`${API}/nco/update-status`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Update failed.");
+          return;
+        }
+
+        loadUploads();
+        loadSoldiers();
+        loadReadiness();
+      }
+
+      // -------------------------
+      // INITIAL PAGE LOAD
+      // -------------------------
+      loadUnassigned();
+      loadSoldiers();
+      loadUploads();
+      loadReadiness();
+    </script>
+  </body>
+</html>
